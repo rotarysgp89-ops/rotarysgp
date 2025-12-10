@@ -1,0 +1,73 @@
+name: Prod DB Migration (workflow_dispatch)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_migrations:
+        description: 'Se true, tenta rodar `supabase db push` e deploy das functions (requer secrets)'
+        required: false
+        default: 'false'
+
+jobs:
+  migrate:
+    name: Migrate source -> destination
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_DB: ${{ secrets.SOURCE_DB_URL }}
+      DEST_DB: ${{ secrets.DEST_DB_URL }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify inputs
+        run: |
+          if [ -z "$SOURCE_DB" ]; then echo "ERROR: secrets.SOURCE_DB_URL is not set"; exit 1; fi
+          if [ -z "$DEST_DB" ]; then echo "ERROR: secrets.DEST_DB_URL is not set"; exit 1; fi
+          echo "SOURCE_DB and DEST_DB found"
+
+      - name: Backup destination (before restore)
+        run: |
+          pg_dump --format=custom --no-owner --no-acl --dbname="$DEST_DB" -f dest_backup.dump
+
+      - name: Dump source
+        run: |
+          pg_dump --format=custom --no-owner --no-acl --dbname="$SOURCE_DB" -f source_dump.dump
+
+      - name: Restore to destination (this will overwrite)
+        run: |
+          pg_restore --clean --no-owner --no-acl --exit-on-error --dbname="$DEST_DB" source_dump.dump
+
+      - name: Upload backups (artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backups
+          path: |
+            dest_backup.dump
+            source_dump.dump
+
+      - name: Apply migrations and deploy functions (optional)
+        if: ${{ github.event.inputs.run_migrations == 'true' }}
+        run: |
+          # Install supabase CLI + npm deps
+          npm install -g supabase || true
+          # Try to login using provided service role key (CI-friendly auth)
+          if [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            export SUPABASE_ACCESS_TOKEN="$SUPABASE_SERVICE_ROLE_KEY"
+          fi
+
+          # Push DB migrations (if you keep migrations in the repo)
+          if [ -n "$SUPABASE_PROJECT_REF" ]; then
+            npx supabase db push --project-ref "$SUPABASE_PROJECT_REF" || echo "supabase db push failed"
+            npx supabase functions deploy create-user --project-ref "$SUPABASE_PROJECT_REF" || echo "deploy create-user failed"
+            npx supabase functions deploy manage-user --project-ref "$SUPABASE_PROJECT_REF" || echo "deploy manage-user failed"
+          else
+            echo "SUPABASE_PROJECT_REF not set; skipping supabase operations"
+          fi

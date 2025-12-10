@@ -473,9 +473,7 @@ export default function Configuracoes() {
         <CardContent>
           <div className="space-y-2 text-sm">
             <p><strong>Versão:</strong> 1.0.0</p>
-            <p><strong>Backend:</strong> Lovable Cloud</p>
-            <p><strong>Autenticação:</strong> Ativa com RLS</p>
-            <p><strong>Status:</strong> Operacional</p>
+            <p><strong>Desenvolvedores responsáveis:</strong> Erick Silva, Arildo JR.</p>
           </div>
         </CardContent>
       </Card>

@@ -73,27 +73,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    return { error: error as Error | null };
+    const cleanEmail = email?.trim().toLowerCase();
+    const cleanPassword = password ?? '';
+
+    if (!cleanEmail) {
+      return { error: new Error('Email é obrigatório') };
+    }
+
+    if (cleanPassword.length < 6) {
+      return { error: new Error('Senha inválida (mínimo 6 caracteres)') };
+    }
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
+
+      return { error: error as Error | null };
+    } catch (err: any) {
+      console.error('Erro no signIn:', err);
+      return { error: err as Error };
+    }
   };
 
   const signUp = async (email: string, password: string, nome: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          nome,
+    const cleanEmail = email?.trim().toLowerCase();
+    const cleanPassword = password ?? '';
+    const cleanNome = nome?.trim();
+
+    if (!cleanEmail) {
+      return { error: new Error('Email é obrigatório') };
+    }
+
+    if (cleanPassword.length < 6) {
+      return { error: new Error('Senha deve ter no mínimo 6 caracteres') };
+    }
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password: cleanPassword,
+        options: {
+          data: {
+            nome: cleanNome,
+          },
+          emailRedirectTo: `${window.location.origin}/`,
         },
-        emailRedirectTo: `${window.location.origin}/`,
-      },
-    });
-    
-    return { error: error as Error | null };
+      });
+
+      return { error: error as Error | null };
+    } catch (err: any) {
+      console.error('Erro no signUp:', err);
+      return { error: err as Error };
+    }
   };
 
   const signOut = async () => {
