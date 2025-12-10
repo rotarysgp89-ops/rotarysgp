@@ -472,8 +472,9 @@ export default function Configuracoes() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
-            <p><strong>Versão:</strong> 1.0.0</p>
+            <p><strong>Versão:</strong> BETA</p>
             <p><strong>Desenvolvedores responsáveis:</strong> Erick Silva, Arildo JR.</p>
+            <p><strong>VERSÃO TESTE</strong> CONTATO: rotarysgp89@gmail.com</p>
           </div>
         </CardContent>
       </Card>
